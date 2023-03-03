@@ -1,3 +1,5 @@
+; By DRSAgile, https://github.com/DRSAgile/Autoadjust-Monitor/
+
 #Persistent
 #SingleInstance force
 #Include %a_scriptdir%
