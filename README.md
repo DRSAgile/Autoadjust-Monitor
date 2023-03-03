@@ -8,3 +8,5 @@ Namely, a table file with sunrise and sunset times data for a whole year for a s
 Additionally, weather service might be used to adjust the monitor also depending on whether it is currently sunny or cloudy outside. 
 
 More details are in the script itself.
+
+The script uses [*Class Monitor* wrapper by jNizM](https://github.com/jNizM/Class_Monitor) for Microsoft's [Monitor Configuration API](https://learn.microsoft.com/en-us/windows/win32/api/_monitor/).
