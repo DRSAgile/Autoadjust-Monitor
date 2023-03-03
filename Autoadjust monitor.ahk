@@ -1,4 +1,4 @@
-﻿#Persistent
+#Persistent
 #SingleInstance force
 #Include %a_scriptdir% ; %A_ScriptName%
 #include Class_Monitor.ahk ; from  https://github.com/jNizM/Class_Monitor
@@ -116,16 +116,19 @@ main()
 	If (_weatherURL and currentTimeInMinutes > _lastWeatherCheckInMinutes + _weatherCheckPeriodInMinutes)
 	{
 		_lastWeatherCheckInMinutes := currentTimeInMinutes
-		WinHttpRequest := ComObjCreate("WinHttp.WinHttpRequest.5.1")
-		WinHttpRequest.Open("GET", _weatherURL, true)
-		WinHttpRequest.Send() ; Using 'true' above and the call below allows the script to remain responsive.
-		WinHttpRequest.WaitForResponse()
-			
-		RegExMatch(WinHttpRequest.ResponseText, _weatherRegExp, matchedGroups) ; there are will be automaticly generated matchedGroups1, matchedGroups2 ... variables
-
-		If (_weatherContrastThresholds[matchedGroups1])
+		Try
 		{
-			_lastContrastCoefficietFromWeather := _weatherContrastThresholds[matchedGroups1]
+			WinHttpRequest := ComObjCreate("WinHttp.WinHttpRequest.5.1")
+			WinHttpRequest.Open("GET", _weatherURL, true)
+			WinHttpRequest.Send() ; Using 'true' above and the call below allows the script to remain responsive.
+			WinHttpRequest.WaitForResponse()
+				
+			RegExMatch(WinHttpRequest.ResponseText, _weatherRegExp, matchedGroups) ; there are will be automaticly generated matchedGroups1, matchedGroups2 ... variables
+
+			If (_weatherContrastThresholds[matchedGroups1])
+			{
+				_lastContrastCoefficietFromWeather := _weatherContrastThresholds[matchedGroups1]
+			}
 		}
 	}
 	contrastCoefficient := contrastCoefficient * _lastContrastCoefficietFromWeather
