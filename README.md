@@ -1,5 +1,5 @@
 # Autoadjust-Monitor
-A script that automatically adjusts the monitor's contrast depending on the length of the day and whether it is clear or cloudy
+A script that automatically adjusts the monitor's contrast depending on the length of the day and whether it is clear or cloudy.
 
 The script requires a preparation to work as intended.
 
