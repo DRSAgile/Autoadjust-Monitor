@@ -3,7 +3,7 @@ A script that automatically adjusts the monitor's contrast depending on the leng
 
 The script requires a preparation to work as intended.
 
-Namely, a table file with sunrise and sunset times data for a whole year for a specific location needed. Whether the data is for a leap year or not, it should work regardless. 
+Namely, a table file with sunrise and sunset times data for a whole year for a specific location needed. The times are basically the same, no matter which year the data is taken for. And whether the data is for a leap year or not, the script should work regardless. 
 
 Additionally, weather service might be used to adjust the monitor also depending on whether it is currently sunny or cloudy outside. 
 
