@@ -11,4 +11,4 @@ Additionally, weather service might be used to adjust the monitor depending on h
 
 More details are in the script itself and in a separate configuration file.
 
-The script uses [*Class Monitor* wrapper by jNizM](https://github.com/jNizM/Class_Monitor) for Microsoft's [Monitor Configuration API](https://learn.microsoft.com/en-us/windows/win32/api/_monitor/).
+[*Class Monitor* wrapper by jNizM](https://github.com/jNizM/Class_Monitor) for Microsoft's [Monitor Configuration API](https://learn.microsoft.com/en-us/windows/win32/api/_monitor/) is used.
