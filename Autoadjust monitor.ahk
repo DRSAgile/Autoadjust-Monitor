@@ -82,7 +82,11 @@ main()
 	netCurrentTimeInMinutes := currentTimeInMinutes - _sunriseTimeInMinutes ; x
 	mean := (_sunsetTimeInMinutes - _sunriseTimeInMinutes) / 2
 	
-	If (_typeOfCurve = "circle")
+	If (_typeOfCurve = "linear")
+	{
+		contrastCoefficient := (netCurrentTimeInMinutes < mean ? netCurrentTimeInMinutes : (2 * mean - netCurrentTimeInMinutes)) / mean
+	}
+	else if (_typeOfCurve = "circle")
 	{
 		contrastCoefficient := Sqrt(1 - ((-mean + netCurrentTimeInMinutes) / mean)**2) ; a circle with radius 1 and centre in 0 formula: y = sqrt(1 - x^2)
 	}
@@ -135,5 +139,13 @@ main()
 	}
 }
 
+; the function can receive additional parameters with statements like this: edit1 := Func("edit").Bind("First", "Test one") and then using it like "Menu, Tray, add, Item name, % edit1
+edit(ItemName, ItemPos, MenuName)
+{
+	MsgBox, % ItemName
+}
+
+Menu, Tray, add
+Menu, Tray, add, Edit contrast at zenith, edit
 main()
 SetTimer, main, %_updateEveryMilliseconds%
