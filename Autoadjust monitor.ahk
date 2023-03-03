@@ -1,6 +1,6 @@
 #Persistent
 #SingleInstance force
-#Include %a_scriptdir% ; %A_ScriptName%
+#Include %a_scriptdir%
 #include Class_Monitor.ahk ; from  https://github.com/jNizM/Class_Monitor
 
 ; a text file with sunrise and sunset columns (in HH:MM format) for the whole year should be named exactly as this script, though have a different extension
@@ -23,7 +23,9 @@ _weatherURL := "https://api.openweathermap.org/data/2.5/forecast?lat=59.960481&l
 _weatherRegExp := """description"":""(.*?)"""
 _weatherContrastThresholds := {"clear sky": 1.5, "few clouds": 1.25} ; strings are checked to be in the results of RegExp
 _weatherCheckPeriodInMinutes := 5 ; weather services may refuse to provide data too often
+_showNetworkErrors := false
 _lastWeatherCheckInMinutes := 0
+_lastSuccessfulWeatherCheckInMinutes := 0
 _lastContrastCoefficietFromWeather := 1
 _lastSetContast := 0
 
@@ -72,7 +74,7 @@ getSunriseAndSunsetTimes(leapYearDataAvailable := true)
 
 main()
 {
-	global Monitor, _typeOfCurve, _weatherURL, _weatherRegExp, _weatherContrastThresholds, _weatherCheckPeriodInMinutes, _lastWeatherCheckInMinutes, _lastContrastCoefficietFromWeather, _dataFileRowToSearch, _dataFileHeaderHeight, _sunriseTimeInMinutes, _sunsetTimeInMinutes, _beforeSunriseOrAfterSunsetContrast,_zenithContrast, _lastSetContast
+	global Monitor, _typeOfCurve, _weatherURL, _weatherRegExp, _weatherContrastThresholds, _weatherCheckPeriodInMinutes, _showNetworkErrors, _lastWeatherCheckInMinutes, _lastSuccessfulWeatherCheckInMinutes, _lastContrastCoefficietFromWeather, _dataFileRowToSearch, _dataFileHeaderHeight, _sunriseTimeInMinutes, _sunsetTimeInMinutes, _beforeSunriseOrAfterSunsetContrast,_zenithContrast, _lastSetContast
 	
 	if (_dataFileRowToSearch != _dataFileHeaderHeight + A_YDay)
 	{
@@ -128,6 +130,14 @@ main()
 			If (_weatherContrastThresholds[matchedGroups1])
 			{
 				_lastContrastCoefficietFromWeather := _weatherContrastThresholds[matchedGroups1]
+			}
+			_lastSuccessfulWeatherCheckInMinutes := currentTimeInMinutes
+		}
+		catch exc
+		{
+			If (_showNetworkErrors)
+			{
+				MsgBox, %A_ScriptName%:`n`r`n`r%exc%
 			}
 		}
 	}
