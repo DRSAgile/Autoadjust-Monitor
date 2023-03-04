@@ -8,7 +8,8 @@
 
 FileEncoding, UTF-8 ; means UTF-8 specifically with BOM
 _configurationFileNameWithPath := a_scriptdir "\Autoadjust monitor-configuration"
-_dataFileFullNameWithPath := a_scriptdir "\" StrReplace(A_ScriptName, ".ahk") _dataFileExtension
+_dataFileFullNameWithPath := a_scriptdir "\" StrReplace(A_ScriptName, ".ahk", _dataFileExtension)
+_iconFileFullNameWithPath := a_scriptdir "\" StrReplace(A_ScriptName, ".ahk", ".png")
 _lastWeatherCheckInMinutes := 0
 _lastSuccessfulWeatherCheckInMinutes := 0
 _lastContrastCoefficietFromWeather := 1
@@ -287,7 +288,7 @@ main()
 	}
 } ; end of main()
 
-
+Menu, Tray, Icon, %_iconFileFullNameWithPath%
 Menu, Tray, Add
 Menu, Tray, Add, Processing..., HasVal
 Menu, Tray, Disable, Processing...
