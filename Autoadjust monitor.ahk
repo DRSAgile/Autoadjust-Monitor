@@ -288,5 +288,8 @@ main()
 } ; end of main()
 
 
+Menu, Tray, Add
+Menu, Tray, Add, Processing..., HasVal
+Menu, Tray, Disable, Processing...
 main()
 SetTimer, main, %_updateEveryMilliseconds%
