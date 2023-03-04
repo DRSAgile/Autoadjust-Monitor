@@ -123,7 +123,7 @@ makeMenu()
 
 saveChanges()
 {
-	Global _configurationFileNameWithPath, _typeOfCurveArray, _typeOfCurve, _zenithContrast, _beforeSunriseOrAfterSunsetContrast, _unsavedChangesArray
+	Global _configurationFileNameWithPath, _typeOfCurveArray, _typeOfCurve, _zenithContrast, _beforeSunriseOrAfterSunsetContrast, _unsavedChangesArray, _showNetworkErrors
 	
 	configuration := ""
 	Loop, read, %_configurationFileNameWithPath%.ahk
@@ -145,9 +145,7 @@ saveChanges()
 	catch exc
 	{
 		If (_showNetworkErrors)
-		{
 			MsgBox, %A_ScriptName%:`n`r`n`r%exc%
-		}
 	}
 		
 } ; end of saveChanges()
@@ -158,7 +156,7 @@ saveChanges()
 ; IMPORTANT: sunrise and sunset times can also be retrieved from weather data (e.g. "sunrise":1677819183,"sunset":1677857341), so there will be no need for a table file for this. However, the information within the weather may not be present in every case, and taking weather into account is optional in this script (and it may not even work reliably, depending on circumstances), so it is not implemented in this case
 getSunriseAndSunsetTimes(leapYearDataAvailable := true)
 {
-	Global _dataFileFullNameWithPath, _dataFileRowToSearch, _dataFileSeparator, _dataFileSunriseColumn, _dataFileSunsetColumn, _sunriseTimeInMinutes, _sunsetTimeInMinutes, _sunriseTime, _sunsetTime, _zenithTime
+	Global _dataFileFullNameWithPath, _dataFileRowToSearch, _dataFileSeparator, _dataFileSunriseColumn, _dataFileSunsetColumn, _sunriseTimeInMinutes, _sunsetTimeInMinutes, _sunriseTime, _sunsetTime, _zenithTime, _showNetworkErrors
 	
 	_sunriseTimeInMinutes := 0
 	_sunsetTimeInMinutes := 0
@@ -193,7 +191,8 @@ getSunriseAndSunsetTimes(leapYearDataAvailable := true)
 	}
 	Else If (!_sunriseTimeInMinutes)
 	{
-		MsgBox, No sunset and/or sunrise time found in the "%_dataFileFullNameWithPath%" file
+		If (_showNetworkErrors)
+			MsgBox, No sunset and/or sunrise time found in the "%_dataFileFullNameWithPath%" file
 		ExitApp
 	}
 	zenithTime := Round((_sunriseTimeInMinutes + _sunsetTimeInMinutes) / 2, 0)
@@ -204,7 +203,7 @@ getSunriseAndSunsetTimes(leapYearDataAvailable := true)
 
 main()
 {
-	Global Monitor, _typeOfCurve, _weatherURL, _weatherRegExp, _weatherContrastThresholds, _weatherCheckPeriodInMinutes, _showNetworkErrors, _lastWeatherCheckInMinutes, _lastSuccessfulWeatherCheckInMinutes, _lastContrastCoefficietFromWeather, _dataFileRowToSearch, _dataFileHeaderHeight, _sunriseTimeInMinutes, _sunsetTimeInMinutes, _beforeSunriseOrAfterSunsetContrast,_zenithContrast, _lastSetContast
+	Global Monitor, _typeOfCurve, _weatherURL, _weatherRegExp, _weatherContrastThresholds, _weatherCheckPeriodInMinutes, _lastWeatherCheckInMinutes, _lastSuccessfulWeatherCheckInMinutes, _lastContrastCoefficietFromWeather, _dataFileRowToSearch, _dataFileHeaderHeight, _sunriseTimeInMinutes, _sunsetTimeInMinutes, _beforeSunriseOrAfterSunsetContrast,_zenithContrast, _lastSetContast, _showNetworkErrors
 	
 	If (_dataFileRowToSearch != _dataFileHeaderHeight + A_YDay)
 	{
@@ -270,9 +269,7 @@ main()
 		catch exc
 		{
 			If (_showNetworkErrors)
-			{
 				MsgBox, %A_ScriptName%:`n`r`n`r%exc%
-			}
 		}
 	}
 	contrastCoefficient := contrastCoefficient * _lastContrastCoefficietFromWeather
