@@ -9,6 +9,6 @@ Namely, a table file with sunrise and sunset times data for a whole year for a s
 
 Additionally, weather service might be used to adjust the monitor depending on how cloudy or sunny it is currently outside. Just as with the sunrise and sunset times, it will require coordinates, but also an API key that can be received upon registration in the weather service.
 
-More details are in the script itself and in a separate configuration file.
+More details are in the script itself and in a separate configuration file, which can be either changed manually via a text editor or from tray menu for some of the options.
 
 [*Class Monitor* wrapper by jNizM](https://github.com/jNizM/Class_Monitor) for Microsoft's [Monitor Configuration API](https://learn.microsoft.com/en-us/windows/win32/api/_monitor/) is used.
