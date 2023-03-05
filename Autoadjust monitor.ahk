@@ -146,7 +146,7 @@ saveChanges()
 	catch exc
 	{
 		If (_showNetworkErrors)
-			MsgBox, %A_ScriptName%:`n`r`n`r%exc%
+			MsgBox, 1 ;MsgBox, %A_ScriptName%:`n`r`n`r%exc%
 	}
 		
 } ; end of saveChanges()
@@ -193,7 +193,7 @@ getSunriseAndSunsetTimes(leapYearDataAvailable := true)
 	Else If (!_sunriseTimeInMinutes)
 	{
 		If (_showNetworkErrors)
-			MsgBox, No sunset and/or sunrise time found in the "%_dataFileFullNameWithPath%" file
+			MsgBox, 2 ;MsgBox, No sunset and/or sunrise time found in the %_dataFileFullNameWithPath% file
 		ExitApp
 	}
 	zenithTime := Round((_sunriseTimeInMinutes + _sunsetTimeInMinutes) / 2, 0)
@@ -213,7 +213,6 @@ main()
 		_lastWeatherCheckInMinutes := 0
 	}
 	currentTimeInMinutes := A_Hour * 60 + A_Min
-	;MsgBox, sunrise: %_sunriseTimeInMinutes%, sunset: %_sunsetTimeInMinutes%, current time: %A_Hour%:%A_Min% = %currentTimeInMinutes%
 
  	If ((currentTimeInMinutes <= _sunriseTimeInMinutes Or currentTimeInMinutes >= _sunsetTimeInMinutes) )
 	{
@@ -224,8 +223,9 @@ main()
 		}
 		return
 	}
-	netCurrentTimeInMinutes := currentTimeInMinutes - _sunriseTimeInMinutes ; x
+	netCurrentTimeInMinutes := currentTimeInMinutes - _sunriseTimeInMinutes ; X
 	mean := (_sunsetTimeInMinutes - _sunriseTimeInMinutes) / 2
+	normalizedNetCurrentTimeInMinutes := (-mean + netCurrentTimeInMinutes) / mean ; X	
 	
 	If (_typeOfCurve = "linear")
 	{
@@ -233,21 +233,24 @@ main()
 	}
 	Else If (_typeOfCurve = "circle")
 	{
-		contrastCoefficient := Sqrt(1 - ((-mean + netCurrentTimeInMinutes) / mean)**2) ; a circle with radius 1 and centre in 0 formula: y = sqrt(1 - x^2)
+		contrastCoefficient := Sqrt(1 - normalizedNetCurrentTimeInMinutes**2) ; a circle with radius 1 and centre in 0 formula: Y = sqrt(1 - X^2)
 	}
 	Else If (_typeOfCurve = "parabola")
 	{
-		contrastCoefficient := -((-mean + netCurrentTimeInMinutes) / mean) **2 + 1 ; upside-down parabola with top at 1 and branched going to -1 and +1 formula: y = -x^2 + 1
+		contrastCoefficient := -normalizedNetCurrentTimeInMinutes **2 + 1 ; upside-down parabola with top at 1 and branched going to -1 and +1 formula: Y = -X^2 + 1
 	}
 	Else If (_typeOfCurve = "Bell") ; not finalized
-	{	; currentTimeInMinutes := 13 * 60 + 0 ; for testing
+	{	
+		mean := 0 ; redefined for the formula as it requires 0 to be in the middle
+		sigma := 0.3
 		e := 2.718281828459045
 		pi := 3.141592653589793
-		sigma := mean / 4
-		contrastCoefficient := (1 / (sigma * Sqrt(2 * pi))) * (e ** (-(netCurrentTimeInMinutes - mean)**2/(2 * sigma ** 2))) ; y
-		; MsgBox, % currentTimeInMinutes " " e " " pi " " mean " " sigma " " netCurrentTimeInMinutes " " contrastCoefficient
+		contrastCoefficient := (1 / (sigma * Sqrt(2 * pi))) * (e ** (-(normalizedNetCurrentTimeInMinutes - mean)**2/(2 * sigma ** 2))) ; Y - a two-tailed normal distribution curve that goes from -1 to 1 on the X axis and from 0 to about 1.4 on the Y axis when X = 0. Since contrastCoefficient variable has to go only up to 1, the result has to be normalized:
+		
+		contrastCoefficient := contrastCoefficient / ((1 / (sigma * Sqrt(2 * pi))) * (e ** (-(0 - mean)**2/(2 * sigma ** 2)))) ; the normalization is when X = 0
+		
+		;MsgBox, % "normalizedNetCurrentTimeInMinutes: " normalizedNetCurrentTimeInMinutes ", mean: " mean ", sigma: " sigma ", contrastCoefficient: " contrastCoefficient
 	}	
-	;MsgBox, % _typeOfCurve " " contrastCoefficient " " _sunriseTimeInMinutes " " currentTimeInMinutes " " _sunsetTimeInMinutes
 		
 	If (_weatherURL and currentTimeInMinutes > _lastWeatherCheckInMinutes + _weatherCheckPeriodInMinutes)
 	{
@@ -270,7 +273,7 @@ main()
 		catch exc
 		{
 			If (_showNetworkErrors)
-				MsgBox, %A_ScriptName%:`n`r`n`r%exc%
+				MsgBox, 3 ; MsgBox, %A_ScriptName%:`n`r`n`r%exc%
 		}
 	}
 	contrastCoefficient := contrastCoefficient * _lastContrastCoefficietFromWeather
