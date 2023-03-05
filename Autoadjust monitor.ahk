@@ -289,6 +289,7 @@ main()
 	{
 		makeMenu()
 	}
+	Menu, Tray, Tip, Current contrast: %_lastSetContast%
 } ; end of main()
 
 Menu, Tray, Icon, %_iconFileFullNameWithPath%
