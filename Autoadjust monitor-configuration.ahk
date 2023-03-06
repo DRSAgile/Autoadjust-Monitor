@@ -10,9 +10,10 @@ _beforeSunriseOrAfterSunsetContrast := 17
 _zenithContrast := 27
 _updateEveryMilliseconds := 60 * 1000 ; 60 * 1000 = every minute
 _typeOfCurveArray := ["linear", "circle", "parabola", "Bell"]
-_typeOfCurve := _typeOfCurveArray[1]
+_typeOfCurveLeft := _typeOfCurveArray[2] ; up to zenith
+_typeOfCurveRight := _typeOfCurveArray[1] ; down from zenith
 _weatherURL := "https://api.openweathermap.org/data/2.5/forecast?lat=59.960481&lon=30.294613&cnt=1&appid=" ; &cnt=1 to only include current weather state with no future prognosis; should probably always include API key as there are no open, free of registration or charge weather services left that would allow non-interactive download of a HTML page with the weather data based on coordinates
 _weatherRegExp := """description"":""(.*?)"""
 _weatherContrastThresholds := {"clear sky": 1.5, "few clouds": 1.25} ; strings are checked to be in the results of RegExp
 _weatherCheckPeriodInMinutes := 5 ; weather services may refuse to provide data too often
-_showNetworkErrors := true
+_showNetworkErrors := false
