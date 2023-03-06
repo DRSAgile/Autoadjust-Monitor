@@ -243,20 +243,21 @@ main()
 	netCurrentTimeInMinutes := currentTimeInMinutes - _sunriseTimeInMinutes ; X
 	mean := (_sunsetTimeInMinutes - _sunriseTimeInMinutes) / 2
 	normalizedNetCurrentTimeInMinutes := (-mean + netCurrentTimeInMinutes) / mean ; X from -1 to 1
+	beforeZenith := netCurrentTimeInMinutes < mean ? true : false
 	
-	If ((_typeOfCurveLeft = "linear" And netCurrentTimeInMinutes < mean) Or (_typeOfCurveRight = "linear" And netCurrentTimeInMinutes >= mean))
+	If ((_typeOfCurveLeft = "linear" And beforeZenith) Or (_typeOfCurveRight = "linear" And !beforeZenith))
 	{
 		contrastCoefficient := (netCurrentTimeInMinutes < mean ? netCurrentTimeInMinutes : (2 * mean - netCurrentTimeInMinutes)) / mean
 	}
-	If ((_typeOfCurveLeft = "circle" And normalizedNetCurrentTimeInMinutes < 0) Or (_typeOfCurveRight = "circle" And normalizedNetCurrentTimeInMinutes >= 0))
+	If ((_typeOfCurveLeft = "circle" And beforeZenith) Or (_typeOfCurveRight = "circle" And !beforeZenith))
 	{
 		contrastCoefficient := Sqrt(1 - normalizedNetCurrentTimeInMinutes**2) ; a circle with radius 1 and centre in 0 formula: Y = sqrt(1 - X^2)
 	}
-	If ((_typeOfCurveLeft = "parabola" And normalizedNetCurrentTimeInMinutes < 0) Or (_typeOfCurveRight = "parabola" And normalizedNetCurrentTimeInMinutes >= 0))
+	If ((_typeOfCurveLeft = "parabola" And beforeZenith) Or (_typeOfCurveRight = "parabola" And !beforeZenith))
 	{
 		contrastCoefficient := -normalizedNetCurrentTimeInMinutes **2 + 1 ; upside-down parabola with top at 1 and branched going to -1 and +1 formula: Y = -X^2 + 1
 	}
-	If ((_typeOfCurveLeft = "Bell" And normalizedNetCurrentTimeInMinutes < 0) Or (_typeOfCurveRight = "Bell" And normalizedNetCurrentTimeInMinutes >= 0))
+	If ((_typeOfCurveLeft = "Bell" And beforeZenith) Or (_typeOfCurveRight = "Bell" And !beforeZenith))
 	{	
 		mean := 0 ; redefined for the formula as it requires 0 to be in the middle
 		sigma := 0.3
@@ -306,7 +307,7 @@ main()
 	{
 		makeMenu()
 	}
-	Menu, Tray, Tip, Current contrast: %_lastSetContast%
+	Menu, Tray, Tip, % "Current contrast: " _lastSetContast ", active curve: " (beforeZenith ? _typeOfCurveLeft : _typeOfCurveRight)
 } ; end of main()
 
 Menu, Tray, Icon, %_iconFileFullNameWithPath%
