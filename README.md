@@ -1,7 +1,7 @@
 # Autoadjust-Monitor
 A script that automatically adjusts the monitor's contrast depending on the length of the day and whether it is clear or cloudy.
 
-The contrast is changing from the lowest set level at sunrise to peaking at zenith to again the lowest level at sunset either linearly, or via circular, parabolic or Bell-curve (normal distribution) trajectories.
+The contrast is changing from the lowest set level at sunrise to peaking at zenith to again the lowest level at sunset either linearly, or via circular, parabolic or Bell-curve (normal distribution) trajectories. The curves for up to zenith and down from it are set separately to allow more flexibility for particular light conditions the monitor is situated in.
 
 The script requires a preparation to work as intended.
 
