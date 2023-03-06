@@ -63,17 +63,21 @@ processInputBox(ByRef value, typeOfValue, ItemName, prompt := " ")
 ; the function can receive additional parameters with statements like this: edit1 := Func("edit").Bind("First", "Test one") and then using it like "Menu, Tray, Add, Item name, % edit1
 edit(ItemName, ItemPos, MenuName)
 {
-	Global _unsavedChangesArray, _typeOfCurveArray, _typeOfCurve, _beforeSunriseOrAfterSunsetContrast, _zenithContrast
+	Global _unsavedChangesArray, _typeOfCurveArray, _typeOfCurveLeft, _typeOfCurveRight, _beforeSunriseOrAfterSunsetContrast, _zenithContrast
 	
-	If (StrSplit(ItemName, A_Space).Length() = 1)
+	If (InStr(MenuName, "Left") And ItemName != _typeOfCurveLeft)
 	{
-		If (ItemName != _typeOfCurve)
-		{
-			_typeOfCurve := ItemName
-			If (!HasVal(_unsavedChangesArray, "Type"))
-				_unsavedChangesArray.push("Type")		
-			main()
-		}
+		_typeOfCurveLeft := ItemName
+		If (!HasVal(_unsavedChangesArray, "Up"))
+			_unsavedChangesArray.push("Up")		
+		main()
+	}
+	Else If (InStr(MenuName, "Right") And ItemName != _typeOfCurveRight)
+	{
+		_typeOfCurveRight := ItemName
+		If (!HasVal(_unsavedChangesArray, "Down"))
+			_unsavedChangesArray.push("Down")		
+		main()
 	}
 	Else If (InStr(ItemName, "Before"))
 	{
@@ -89,10 +93,13 @@ edit(ItemName, ItemPos, MenuName)
 ; different menu items are identified by AHK by their text and, additionally in this script, by the first word, hence added menu items can not start with the same words
 makeMenu()
 {
-	Global _sunriseTime, _zenithTime, _sunsetTime, _typeOfCurveArray, _typeOfCurve, _beforeSunriseOrAfterSunsetContrast, _zenithContrast, _unsavedChangesArray
+	Global _sunriseTime, _zenithTime, _sunsetTime, _typeOfCurveArray, _typeOfCurveLeft, _typeOfCurveRight, _beforeSunriseOrAfterSunsetContrast, _zenithContrast, _unsavedChangesArray
 	
-	editTypeOfCurve := "Type of curve to interpolate the contrast: " _typeOfCurve
-	editTypeOfCurve := (HasVal(_unsavedChangesArray, StrSplit(editTypeOfCurve, A_Space)[1]) ? "*" : "") editTypeOfCurve	
+	editTypeOfCurveLeft := "Up to zenith curve to use for interpolation: " _typeOfCurveLeft
+	editTypeOfCurveLeft := (HasVal(_unsavedChangesArray, StrSplit(editTypeOfCurveLeft, A_Space)[1]) ? "*" : "") editTypeOfCurveLeft	
+	
+	editTypeOfCurveRight := "Down from zenith curve to use for interpolation: " _typeOfCurveRight
+	editTypeOfCurveRight := (HasVal(_unsavedChangesArray, StrSplit(editTypeOfCurveRight, A_Space)[1]) ? "*" : "") editTypeOfCurveRight	
 	
 	editSunriseSunsetContrast := "Before sunrise (" _sunriseTime "), after sunset (" _sunsetTime ") contrast: " _beforeSunriseOrAfterSunsetContrast	
 	editSunriseSunsetContrast := (HasVal(_unsavedChangesArray, StrSplit(editSunriseSunsetContrast, A_Space)[1]) ? "*" : "") editSunriseSunsetContrast
@@ -109,13 +116,22 @@ makeMenu()
 	
 	For index, element in _typeOfCurveArray
 	{
-		Menu, typeOfCurveSubmenu, Add, %element%, edit
-		If (element = _typeOfCurve)
-			Menu, typeOfCurveSubmenu, Check, %element%
+		Menu, typeOfCurveSubmenuLeft, Add, %element%, edit
+		If (element = _typeOfCurveLeft)
+			Menu, typeOfCurveSubmenuLeft, Check, %element%
 		Else
-			Menu, typeOfCurveSubmenu, Uncheck, %element%
+			Menu, typeOfCurveSubmenuLeft, Uncheck, %element%
 	}
-	Menu, Tray, Add, %editTypeOfCurve%, :typeOfCurveSubmenu
+	For index, element in _typeOfCurveArray
+	{
+		Menu, typeOfCurveSubmenuRight, Add, %element%, edit
+		If (element = _typeOfCurveRight)
+			Menu, typeOfCurveSubmenuRight, Check, %element%
+		Else
+			Menu, typeOfCurveSubmenuRight, Uncheck, %element%
+	}
+	Menu, Tray, Add, %editTypeOfCurveLeft%, :typeOfCurveSubmenuLeft
+	Menu, Tray, Add, %editTypeOfCurveRight%, :typeOfCurveSubmenuRight
 	
 	Menu, Tray, Add, %editSunriseSunsetContrast%, edit
 	Menu, Tray, Add, %editZenithContrast%, edit
@@ -124,12 +140,13 @@ makeMenu()
 
 saveChanges()
 {
-	Global _configurationFileNameWithPath, _typeOfCurveArray, _typeOfCurve, _zenithContrast, _beforeSunriseOrAfterSunsetContrast, _unsavedChangesArray, _showNetworkErrors
+	Global _configurationFileNameWithPath, _typeOfCurveArray, _typeOfCurveLeft, _typeOfCurveRight, _zenithContrast, _beforeSunriseOrAfterSunsetContrast, _unsavedChangesArray, _showNetworkErrors
 	
 	configuration := ""
 	Loop, read, %_configurationFileNameWithPath%.ahk
 	{
-		processedLine := RegExReplace(A_LoopReadLine, "(_typeOfCurve := _typeOfCurveArray\[).*$", "$1" HasVal(_typeOfCurveArray, _typeOfCurve) "]")
+		processedLine := RegExReplace(A_LoopReadLine, "(_typeOfCurveLeft := _typeOfCurveArray\[).*$", "$1" HasVal(_typeOfCurveArray, _typeOfCurveLeft) "]")		
+		processedLine := RegExReplace(processedLine, "(_typeOfCurveRight := _typeOfCurveArray\[).*$", "$1" HasVal(_typeOfCurveArray, _typeOfCurveRight) "]")
 		processedLine := RegExReplace(processedLine, "(_zenithContrast :=).*$", "$1 " _zenithContrast) 
 		processedLine := RegExReplace(processedLine, "(_beforeSunriseOrAfterSunsetContrast :=).*$", "$1 " _beforeSunriseOrAfterSunsetContrast)
 		configuration .= processedLine "`n"
@@ -204,7 +221,7 @@ getSunriseAndSunsetTimes(leapYearDataAvailable := true)
 
 main()
 {
-	Global Monitor, _typeOfCurve, _weatherURL, _weatherRegExp, _weatherContrastThresholds, _weatherCheckPeriodInMinutes, _lastWeatherCheckInMinutes, _lastSuccessfulWeatherCheckInMinutes, _lastContrastCoefficietFromWeather, _dataFileRowToSearch, _dataFileHeaderHeight, _sunriseTimeInMinutes, _sunsetTimeInMinutes, _beforeSunriseOrAfterSunsetContrast,_zenithContrast, _lastSetContast, _showNetworkErrors
+	Global Monitor, _typeOfCurveLeft, _typeOfCurveRight, _weatherURL, _weatherRegExp, _weatherContrastThresholds, _weatherCheckPeriodInMinutes, _lastWeatherCheckInMinutes, _lastSuccessfulWeatherCheckInMinutes, _lastContrastCoefficietFromWeather, _dataFileRowToSearch, _dataFileHeaderHeight, _sunriseTimeInMinutes, _sunsetTimeInMinutes, _beforeSunriseOrAfterSunsetContrast,_zenithContrast, _lastSetContast, _showNetworkErrors
 	
 	If (_dataFileRowToSearch != _dataFileHeaderHeight + A_YDay)
 	{
@@ -225,21 +242,21 @@ main()
 	}
 	netCurrentTimeInMinutes := currentTimeInMinutes - _sunriseTimeInMinutes ; X
 	mean := (_sunsetTimeInMinutes - _sunriseTimeInMinutes) / 2
-	normalizedNetCurrentTimeInMinutes := (-mean + netCurrentTimeInMinutes) / mean ; X	
+	normalizedNetCurrentTimeInMinutes := (-mean + netCurrentTimeInMinutes) / mean ; X from -1 to 1
 	
-	If (_typeOfCurve = "linear")
+	If ((_typeOfCurveLeft = "linear" And netCurrentTimeInMinutes < mean) Or (_typeOfCurveRight = "linear" And netCurrentTimeInMinutes >= mean))
 	{
 		contrastCoefficient := (netCurrentTimeInMinutes < mean ? netCurrentTimeInMinutes : (2 * mean - netCurrentTimeInMinutes)) / mean
 	}
-	Else If (_typeOfCurve = "circle")
+	If ((_typeOfCurveLeft = "circle" And normalizedNetCurrentTimeInMinutes < 0) Or (_typeOfCurveRight = "circle" And normalizedNetCurrentTimeInMinutes >= 0))
 	{
 		contrastCoefficient := Sqrt(1 - normalizedNetCurrentTimeInMinutes**2) ; a circle with radius 1 and centre in 0 formula: Y = sqrt(1 - X^2)
 	}
-	Else If (_typeOfCurve = "parabola")
+	If ((_typeOfCurveLeft = "parabola" And normalizedNetCurrentTimeInMinutes < 0) Or (_typeOfCurveRight = "parabola" And normalizedNetCurrentTimeInMinutes >= 0))
 	{
 		contrastCoefficient := -normalizedNetCurrentTimeInMinutes **2 + 1 ; upside-down parabola with top at 1 and branched going to -1 and +1 formula: Y = -X^2 + 1
 	}
-	Else If (_typeOfCurve = "Bell") ; not finalized
+	If ((_typeOfCurveLeft = "Bell" And normalizedNetCurrentTimeInMinutes < 0) Or (_typeOfCurveRight = "Bell" And normalizedNetCurrentTimeInMinutes >= 0))
 	{	
 		mean := 0 ; redefined for the formula as it requires 0 to be in the middle
 		sigma := 0.3
