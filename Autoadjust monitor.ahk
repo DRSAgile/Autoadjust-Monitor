@@ -7,39 +7,50 @@
 #include Class_Monitor.ahk ; from  https://github.com/jNizM/Class_Monitor
 
 FileEncoding, UTF-8 ; means UTF-8 specifically with BOM
-_configurationFileNameWithPath := A_Scriptdir "\Autoadjust monitor-configuration"
+Global _configurationFileNameWithPath := A_Scriptdir "\Autoadjust monitor-configuration"
 If (!_dataFileExtension) ; if the variable is not filled, then the configuration file for a current user does not exist
 {
 		FileCopy, %_configurationFileNameWithPath%.ahk, %_configurationFileNameWithPath%-%A_Username%.ahk, 1
 		Reload
 }
 _configurationFileNameWithPath := _configurationFileNameWithPath "-" A_Username
-_dataFileFullNameWithPath := a_scriptdir "\" StrReplace(A_ScriptName, ".ahk", _dataFileExtension)
-_iconFileFullNameWithPath := a_scriptdir "\" StrReplace(A_ScriptName, ".ahk", ".png")
-_lastWeatherCheckInMinutes := 0
-_lastSuccessfulWeatherCheckInMinutes := 0
-_lastContrastCoefficietFromWeather := 1
-_lastCheckedWeather := ""
-_lastSetContast := 0
-_dataFileRowToSearch := 0
-_sunriseTimeInMinutes := 0
-_sunsetTimeInMinutes := 0
-_sunriseTime := ""
-_sunsetTime := ""
-_zenithTime := ""
-_lastIsFullscreen := isWindowFullScreen("A")
-_unsavedChangesArray := []
+Global _dataFileFullNameWithPath := a_scriptdir "\" StrReplace(A_ScriptName, ".ahk", _dataFileExtension)
+Global _iconFileFullNameWithPath := a_scriptdir "\" StrReplace(A_ScriptName, ".ahk", ".png")
+Global _weatherTypesArray := ["Clear", "Few", "Scattered"]
+Global _lastWeatherCheckInMinutes := 0
+Global _lastSuccessfulWeatherCheckInMinutes := 0
+Global _lastContrastCoefficietFromWeather := [1, 1]
+Global _lastCheckedWeather := ""
+Global _lastSetContast := 0
+Global _dataFileRowToSearch := 0
+Global _sunriseTimeInMinutes := 0
+Global _sunsetTimeInMinutes := 0
+Global _currentTimeInMinutes := 0
+Global _afterZenith := false
+Global _sunriseTime := ""
+Global _sunsetTime := ""
+Global _zenithTime := ""
+Global _lastIsFullscreen := isWindowFullScreen("A")
+Global _unsavedChangesArray := []
 
 
-HasVal(haystack, needle)
+arrayToString(arr, separator := ", ")
 {
-	for index, value in haystack
-		if (value = needle)
+	arrStr := ""
+	Loop % arr.Length()
+		arrStr .= separator arr[A_Index]
+	return LTrim(arrStr, separator)	
+} ; end of arrayToString(arr, separator := ", ")
+
+hasVal(haystack, needle)
+{
+	For index, value In haystack
+		If (value = needle)
 			return index
-	if !IsObject(haystack)
-		throw Exception("Bad haystack!", -1, haystack)
-	return 0	
-} ; end of HasVal(haystack, needle)
+	If !IsObject(haystack)
+		Throw Exception("Bad haystack!", -1, haystack)
+	Return 0
+} ; end of hasVal(haystack, needle)
 
 
 ; a variant from https://www.autohotkey.com/board/topic/50876-isfullscreen-checks-if-a-window-is-in-fullscreen-mode/, even though more detailed, does NOT detect a video player working in full screen
@@ -62,49 +73,48 @@ isWindowFullScreen(winTitle)
 
 
 ; prompt needs to be a space by default as otherwise InputBox shows garbage
-processInputBox(ByRef value, typeOfValue, ItemName, prompt := " ") 
+processInputBox(ByRef value, typeOfValue, itemOrMenuName, prompt := " ") 
 {
-	Global _unsavedChangesArray
-	
-	title := StrReplace(ItemName, ": " value, "")
+	title := StrReplace(itemOrMenuName, ": " value)
 	InputBox, newValue, %title%, %prompt%,,,,,,,,%value%
 	
 	If (ErrorLevel Or newValue == value)
 		return false
 	Else If (typeOfValue = "IN>0<=100" and !(newValue ~= "^(?:100|)[0-9]{1,2}$"))
-		return processInputBox(value, typeOfValue, ItemName, "The value should be an integer numeric between 0 and 100")
+		return processInputBox(value, typeOfValue, itemOrMenuName, "The value should be an integer numeric between 0 and 100")
 	Else If (typeOfValue = "FN>=1<2" and !(newValue ~= "^(?:1|1\.[0-9]{1,2})$"))
-		return processInputBox(value, typeOfValue, ItemName, "The value should be a floating point numeric between 1 and 2")
+		return processInputBox(value, typeOfValue, itemOrMenuName, "The value should be a floating point numeric between 1 and 2")
 	Else
 	{
 		value := newValue
-		firstWord := StrReplace(StrSplit(ItemName, A_Space)[1], "*", "")
-		If (!HasVal(_unsavedChangesArray, firstWord))
+		firstWord := StrReplace(StrSplit(itemOrMenuName, A_Space)[1], "*", "")
+		If (!hasVal(_unsavedChangesArray, firstWord))
 			_unsavedChangesArray.push(firstWord)
-		main()
 		return true
 	}
-} ; end of processInputBox(value, typeOfValue, title, prompt := "")
+} ; end of processInputBox(ByRef value, typeOfValue, itemOrMenuName, prompt := " ") 
 
 
-; the function can receive additional parameters with statements like this: edit1 := Func("edit").Bind("First", "Test one") and then using it like "Menu, Tray, Add, Item name, % edit1
-edit(ItemName, ItemPos, MenuName)
-{
-	Global _unsavedChangesArray, _typeOfCurveArray, _typeOfCurveLeft, _typeOfCurveRight, _beforeSunriseOrAfterSunsetContrast, _zenithContrast, _сontrastCoefficientInFullscreen, _weatherContrastThresholds
-	
+; the function can receive additional parameters with statements like this: boundEdit := Func("edit").Bind([vale to pass]) and then using it like "Menu, Tray, Add, Item name, % boundEdit
+edit(menuText, ItemName, ItemPos, MenuName)
+{	
 	callMain := false
-	firstWord := StrReplace(StrSplit(ItemName, A_Space)[1], "*")
-	If (InStr(MenuName, "Left") And ItemName != _typeOfCurveLeft)
+	firstWord := StrReplace(StrSplit(menuText ? menuText : ItemName, A_Space)[1], "*")
+	If (weatherArrayIndex := hasVal(_weatherTypesArray, firstWord)) ; goes in the beginning of the function's code as submenus contain first words, used in menu names
+		For k, v In _weatherContrastThresholds
+			If (weatherArrayIndex = A_Index And (value := v[ItemPos]) And (callMain := processInputBox(value, "FN>=1<2", StrReplace(menuText, ":") ItemName)) And (_weatherContrastThresholds[k][ItemPos] := Trim(value, "0")))
+				Break
+	Else If (InStr(MenuName, "Left") And ItemName != _typeOfCurveLeft)
 	{
 		_typeOfCurveLeft := ItemName
-		If (!HasVal(_unsavedChangesArray, "Up"))
+		If (!hasVal(_unsavedChangesArray, "Up"))
 			_unsavedChangesArray.push("Up")		
 		callMain := true
 	}
 	Else If (InStr(MenuName, "Right") And ItemName != _typeOfCurveRight)
 	{
 		_typeOfCurveRight := ItemName
-		If (!HasVal(_unsavedChangesArray, "Down"))
+		If (!hasVal(_unsavedChangesArray, "Down"))
 			_unsavedChangesArray.push("Down")		
 		callMain := true
 	}
@@ -114,88 +124,85 @@ edit(ItemName, ItemPos, MenuName)
 		callMain := processInputBox(_zenithContrast, "IN>0<=100", ItemName)
 	Else If (firstWord = "Contrast")
 		callMain := processInputBox(_сontrastCoefficientInFullscreen, "FN>=1<2", ItemName)
-	Else If ((weatherArray := ["Clear", "Few", "Scattered"]) And (weatherIndex := HasVal(weatherArray, firstWord)))
-		For k, v In _weatherContrastThresholds
-			If (weatherIndex = A_Index And (callMain := processInputBox(v, "FN>=1<2", ItemName)) And (_weatherContrastThresholds[k] := Trim(v, "0")))
-				Break
 	If (callMain)
-		main()
-		
-} ; end of edit(ItemName, ItemPos, MenuName)
+		main(true)		
+} ; end of edit(menuText, ItemName, ItemPos, MenuName)
 
 
 ; different menu items are identified by AHK by their text and, additionally in this script, by the first word, hence added menu items can not start with the same words
 processMenuItem(str)
 {
-	global _unsavedChangesArray
-	return (HasVal(_unsavedChangesArray, StrSplit(str, A_Space)[1]) ? "*" : "") str	
+	return (hasVal(_unsavedChangesArray, StrSplit(str, A_Space)[1]) ? "*" : "") str	
 } ; end of processMenuItem(str)
 
 
 ; different menu items are identified by AHK by their text and, additionally in this script, by the first word, hence added menu items can not start with the same words
-makeMenu(makeNewMenu = false, currentTimeInMinutes = 0, beforeZenith = 0)
-{
-	Global _lastSetContast, _sunriseTime, _zenithTime, _sunsetTime, _sunriseTimeInMinutes, _sunsetTimeInMinutes, _сontrastCoefficientInFullscreen, _typeOfCurveArray, _typeOfCurveLeft, _typeOfCurveRight, _beforeSunriseOrAfterSunsetContrast, _zenithContrast, _weatherContrastThresholds, _lastContrastCoefficietFromWeather, _lastCheckedWeather, _unsavedChangesArray
-	
-	If (currentTimeInMinutes)
-		Menu, Tray, Tip, % "current contrast: " _lastSetContast ",`nactive curve: " (currentTimeInMinutes < _sunriseTimeInMinutes Or currentTimeInMinutes > _sunsetTimeInMinutes ? "none; out of the daylight" : (beforeZenith ? _typeOfCurveLeft : _typeOfCurveRight)) ",`nweather coefficient: " _lastContrastCoefficietFromWeather " (" _lastCheckedWeather ")"
+makeMenu(makeNewMenu := false)
+{	
+	If (_currentTimeInMinutes)
+		Menu, Tray, Tip, % "current contrast: " _lastSetContast ",`nactive curve: " (_currentTimeInMinutes < _sunriseTimeInMinutes Or _currentTimeInMinutes > _sunsetTimeInMinutes ? "none; out of the daylight" : (!_afterZenith ? _typeOfCurveLeft : _typeOfCurveRight)) ",`nActive weather coefficient: " _lastContrastCoefficietFromWeather[1 + _afterZenith] " (" _lastCheckedWeather ")"
 	
 	if (!makeNewMenu)
 		Return
 
+	bEdit := Func("edit").Bind("")	
 	Menu, Tray, DeleteAll	
 	Menu, Tray, Add
 	Menu, Tray, Add, Save changes, saveChanges
 	If (!_unsavedChangesArray.Length())
 		Menu, Tray, Disable, Save changes
 	Menu, Tray, Add
-	Menu, Tray, Add, % processMenuItem("Contrast coefficient in fullscreen mode: " _сontrastCoefficientInFullscreen), edit
+	Menu, Tray, Add, % processMenuItem("Contrast coefficient in fullscreen mode: " _сontrastCoefficientInFullscreen), % bEdit
+	
+	menuNamesArray := ["Clear sky contrast coefficient: ", "Few clouds contrast coefficient: ", "Scattered clouds contrast coefficient: "]
 	For k, v In _weatherContrastThresholds
 	{
-		If (A_Index = 1)
-			Menu, Tray, Add, % processMenuItem("Clear sky contrast coefficient: " v), edit
-		Else If (A_Index = 2)
-			Menu, Tray, Add, % processMenuItem("Few clouds contrast coefficient: " v), edit
-		Else If (A_Index = 3)
-			Menu, Tray, Add, % processMenuItem("Scattered clouds contrast coefficient: " v), edit
+		boundEdit := Func("edit").Bind(menuNamesArray[A_Index])
+		subMenuName := "WeatherSubmenu" _weatherTypesArray[A_Index]
+		Try
+			Menu, %subMenuName%, DeleteAll
+		vStr := ""
+		Loop % v.Length()
+		{
+			vStr .= ", " v[A_Index]
+			Menu, %subMenuName%, Add, % (A_Index = 1 ? "before" : "after") " zenith: " v[A_Index], % boundEdit
+		}
+		vStr := LTrim(vStr, ", ")
+		Menu, Tray, Add, % processMenuItem(menuNamesArray[A_Index] vStr), :%subMenuName%
 	}
 	For index, element In _typeOfCurveArray
 	{
-		Menu, typeOfCurveSubmenuLeft, Add, %element%, edit
+		Menu, typeOfCurveSubmenu_Left, Add, %element%, % bEdit
 		If (element = _typeOfCurveLeft)
-			Menu, typeOfCurveSubmenuLeft, Check, %element%
+			Menu, typeOfCurveSubmenu_Left, Check, %element%
 		Else
-			Menu, typeOfCurveSubmenuLeft, Uncheck, %element%
-		Menu, typeOfCurveSubmenuRight, Add, %element%, edit
+			Menu, typeOfCurveSubmenu_Left, Uncheck, %element%
+		Menu, typeOfCurveSubmenu_Right, Add, %element%, % bEdit
 		If (element = _typeOfCurveRight)
-			Menu, typeOfCurveSubmenuRight, Check, %element%
+			Menu, typeOfCurveSubmenu_Right, Check, %element%
 		Else
-			Menu, typeOfCurveSubmenuRight, Uncheck, %element%
+			Menu, typeOfCurveSubmenu_Right, Uncheck, %element%
 	}
-	Menu, Tray, Add, % processMenuItem("Up to zenith curve for interpolation: " _typeOfCurveLeft), :typeOfCurveSubmenuLeft
-	Menu, Tray, Add, % processMenuItem("Down from zenith curve for interpolation: " _typeOfCurveRight), :typeOfCurveSubmenuRight
-	Menu, Tray, Add, % processMenuItem("Before sunrise (" _sunriseTime "), after sunset (" _sunsetTime ") contrast: " _beforeSunriseOrAfterSunsetContrast), edit
-	Menu, Tray, Add, % processMenuItem("Zenith (" _zenithTime ") contrast: " _zenithContrast), edit
-} ; end of makeMenu(makeNewMenu = false, currentTimeInMinutes = 0, beforeZenith = 0)
+	Menu, Tray, Add, % processMenuItem("Up to zenith curve for interpolation: " _typeOfCurveLeft), :typeOfCurveSubmenu_Left
+	Menu, Tray, Add, % processMenuItem("Down from zenith curve for interpolation: " _typeOfCurveRight), :typeOfCurveSubmenu_Right
+	Menu, Tray, Add, % processMenuItem("Before sunrise (" _sunriseTime "), after sunset (" _sunsetTime ") contrast: " _beforeSunriseOrAfterSunsetContrast), % bEdit
+	Menu, Tray, Add, % processMenuItem("Zenith (" _zenithTime ") contrast: " _zenithContrast), % bEdit
+} ; end of makeMenu(makeNewMenu := false)
 
 
 saveChanges()
-{
-	Global _configurationFileNameWithPath, _typeOfCurveArray, _typeOfCurveLeft, _typeOfCurveRight, _zenithContrast, _beforeSunriseOrAfterSunsetContrast, _сontrastCoefficientInFullscreen, _weatherContrastThresholds, _unsavedChangesArray, _showNetworkErrors
-	
-	weatherRegExpArray := ["(_weatherContrastThresholds :=\s*{[^:]+:)[^,]+(,.+)$", "(_weatherContrastThresholds :=\s*?{[^,]+[^:]+:)[^,]+(,.+?)$", "(_weatherContrastThresholds :=\s*?{[^,]+[^:]+:[^,]+[^:]+:)[^,]+(}.*?)$"]
-	
+{	
 	configuration := ""
 	Loop, read, %_configurationFileNameWithPath%.ahk
 	{
-		processedLine := RegExReplace(A_LoopReadLine, "(_typeOfCurveLeft := _typeOfCurveArray\[).*$", "$1" HasVal(_typeOfCurveArray, _typeOfCurveLeft) "]")		
-		processedLine := RegExReplace(processedLine, "(_typeOfCurveRight := _typeOfCurveArray\[).*$", "$1" HasVal(_typeOfCurveArray, _typeOfCurveRight) "]")
+		processedLine := RegExReplace(A_LoopReadLine, "(_typeOfCurveLeft := _typeOfCurveArray\[).*$", "$1" hasVal(_typeOfCurveArray, _typeOfCurveLeft) "]")		
+		processedLine := RegExReplace(processedLine, "(_typeOfCurveRight := _typeOfCurveArray\[).*$", "$1" hasVal(_typeOfCurveArray, _typeOfCurveRight) "]")
 		processedLine := RegExReplace(processedLine, "(_zenithContrast :=).*$", "$1 " _zenithContrast) 
 		processedLine := RegExReplace(processedLine, "(_beforeSunriseOrAfterSunsetContrast :=).*$", "$1 " _beforeSunriseOrAfterSunsetContrast)
 		processedLine := RegExReplace(processedLine, "(_сontrastCoefficientInFullscreen :=).*$", "$1 " _сontrastCoefficientInFullscreen)
 		If (InStr(processedLine, "_weatherContrastThresholds"))
 			For k, v in _weatherContrastThresholds
-					processedLine := RegExReplace(processedLine, weatherRegExpArray[A_Index], "$1 " v "$2")
+				processedLine := RegExReplace(processedLine, "(_weatherContrastThresholds :=\s*?{(?:[^\[]+\[){" A_Index "})[^\]]+(\].+)$", "$1" arrayToString(v) "$2")
 		configuration .= processedLine "`n"
 	}
 	Try
@@ -219,11 +226,6 @@ saveChanges()
 ; IMPORTANT: sunrise and sunset times can also be retrieved from weather data (e.g. "sunrise":1677819183,"sunset":1677857341), so there will be no need for a table file for this. However, the information within the weather may not be present in every case, and taking weather into account is optional in this script (and it may not even work reliably, depending on circumstances), so it is not implemented in this case
 getSunriseAndSunsetTimes(leapYearDataAvailable := true)
 {
-	Global _dataFileFullNameWithPath, _dataFileRowToSearch, _dataFileSeparator, _dataFileSunriseColumn, _dataFileSunsetColumn, _sunriseTimeInMinutes, _sunsetTimeInMinutes, _sunriseTime, _sunsetTime, _zenithTime, _showNetworkErrors
-	
-	_sunriseTimeInMinutes := 0
-	_sunsetTimeInMinutes := 0
-	
 	Loop, read, %_dataFileFullNameWithPath%
 	{
 		If (A_Index <= _dataFileRowToSearch + (leapYearDataAvailable ? 0 : -1))
@@ -256,26 +258,26 @@ getSunriseAndSunsetTimes(leapYearDataAvailable := true)
 	}
 	zenithTime := Round((_sunriseTimeInMinutes + _sunsetTimeInMinutes) / 2, 0)
 	zenithTimeH := Round(zenithTime // 60, 0)
-	_zenithTime := zenithTimeH ":" (zenithTime - zenithTimeH * 60)
+	zenithTimeM := zenithTime - zenithTimeH * 60
+	_zenithTime := zenithTimeH ":" zenithTimeM
+	_zenithTimeInMinues := zenithTimeH * 60 + zenithTimeM
 } ; end of getSunriseAndSunsetTimes(leapYearDataAvailable := true)
 
 
 checkFullScreen()
 {
-	global _lastIsFullscreen
 	isFullscreen := isWindowFullScreen("A") 
-	if (isFullscreen <> _lastIsFullscreen)
+	If (isFullscreen <> _lastIsFullscreen)
 	{
 		_lastIsFullscreen := isFullscreen
 		main()
-	}
-	
+	}	
 } ; end checkFullScreen()
 
 
-main()
+main(makeNewMenu := "")
 {
-	Global Monitor, _typeOfCurveLeft, _typeOfCurveRight, _weatherURL, _weatherRegExp, _weatherContrastThresholds, _weatherCheckPeriodInMinutes, _lastWeatherCheckInMinutes, _lastSuccessfulWeatherCheckInMinutes, _lastCheckedWeather, _lastContrastCoefficietFromWeather, _dataFileRowToSearch, _dataFileHeaderHeight, _sunriseTimeInMinutes, _sunsetTimeInMinutes, _beforeSunriseOrAfterSunsetContrast,_zenithContrast, _сontrastCoefficientInFullscreen, _lastSetContast, _showNetworkErrors
+	makeNewMenu := makeNewMenu != "" ? makeNewMenu : (_lastSetContast ? false : true)
 	
 	fullscreenContrastCoefficient := isWindowFullScreen("A") ? _сontrastCoefficientInFullscreen : 1
 	
@@ -285,15 +287,14 @@ main()
 		getSunriseAndSunsetTimes()
 		_lastWeatherCheckInMinutes := 0
 	}
-	currentTimeInMinutes := A_Hour * 60 + A_Min
+	_currentTimeInMinutes := A_Hour * 60 + A_Min
 
-	makeNewMenu := _lastSetContast ? false : true
-	netCurrentTimeInMinutes := currentTimeInMinutes - _sunriseTimeInMinutes ; X
+	net_currentTimeInMinutes := _currentTimeInMinutes - _sunriseTimeInMinutes ; X
 	mean := (_sunsetTimeInMinutes - _sunriseTimeInMinutes) / 2
-	normalizedNetCurrentTimeInMinutes := (-mean + netCurrentTimeInMinutes) / mean ; X from -1 to 1
-	beforeZenith := netCurrentTimeInMinutes < mean ? true : false
+	normalizedNetCurrentTimeInMinutes := (-mean + net_currentTimeInMinutes) / mean ; X from -1 to 1
+	_afterZenith := net_currentTimeInMinutes >= mean ? true : false
 
- 	If ((currentTimeInMinutes <= _sunriseTimeInMinutes Or currentTimeInMinutes >= _sunsetTimeInMinutes) )
+ 	If ((_currentTimeInMinutes <= _sunriseTimeInMinutes Or _currentTimeInMinutes >= _sunsetTimeInMinutes) )
 	{
 		contrastToSet := Round(fullscreenContrastCoefficient * _beforeSunriseOrAfterSunsetContrast)
 		If (_lastSetContast != contrastToSet)
@@ -302,16 +303,16 @@ main()
 			Monitor.SetContrast(_lastSetContast)
 			makeNewMenu := true
 		}
-		makeMenu(makeNewMenu, currentTimeInMinutes, beforeZenith)		
+		makeMenu(makeNewMenu)		
 		return
 	}	
-	Else If ((_typeOfCurveLeft = "linear" And beforeZenith) Or (_typeOfCurveRight = "linear" And !beforeZenith))
-		contrastCoefficient := (netCurrentTimeInMinutes < mean ? netCurrentTimeInMinutes : (2 * mean - netCurrentTimeInMinutes)) / mean
-	If ((_typeOfCurveLeft = "circle" And beforeZenith) Or (_typeOfCurveRight = "circle" And !beforeZenith))
+	Else If ((_typeOfCurveLeft = "linear" And !_afterZenith) Or (_typeOfCurveRight = "linear" And _afterZenith))
+		contrastCoefficient := (!_afterZenith ? net_currentTimeInMinutes : (2 * mean - net_currentTimeInMinutes)) / mean
+	If ((_typeOfCurveLeft = "circle" And !_afterZenith) Or (_typeOfCurveRight = "circle" And _afterZenith))
 		contrastCoefficient := Sqrt(1 - normalizedNetCurrentTimeInMinutes**2) ; a circle with radius 1 and centre in 0 formula: Y = sqrt(1 - X^2)
-	If ((_typeOfCurveLeft = "parabola" And beforeZenith) Or (_typeOfCurveRight = "parabola" And !beforeZenith))
+	If ((_typeOfCurveLeft = "parabola" And !_afterZenith) Or (_typeOfCurveRight = "parabola" And _afterZenith))
 		contrastCoefficient := -normalizedNetCurrentTimeInMinutes **2 + 1 ; upside-down parabola with top at 1 and branched going to -1 and +1 formula: Y = -X^2 + 1
-	If ((_typeOfCurveLeft = "Bell" And beforeZenith) Or (_typeOfCurveRight = "Bell" And !beforeZenith))
+	If ((_typeOfCurveLeft = "Bell" And !_afterZenith) Or (_typeOfCurveRight = "Bell" And _afterZenith))
 	{	
 		mean := 0 ; redefined for the formula as it requires 0 to be in the middle
 		sigma := 0.3
@@ -320,16 +321,14 @@ main()
 		contrastCoefficient := (1 / (sigma * Sqrt(2 * pi))) * (e ** (-(normalizedNetCurrentTimeInMinutes - mean)**2/(2 * sigma ** 2))) ; Y - a two-tailed normal distribution curve that goes from -1 to 1 on the X axis and from 0 to about 1.4 on the Y axis when X = 0. Since contrastCoefficient variable has to go only up to 1, the result has to be normalized:
 		
 		contrastCoefficient := contrastCoefficient / ((1 / (sigma * Sqrt(2 * pi))) * (e ** (-(0 - mean)**2/(2 * sigma ** 2)))) ; the normalization is when X = 0
-		
-		;MsgBox, % "normalizedNetCurrentTimeInMinutes: " normalizedNetCurrentTimeInMinutes ", mean: " mean ", sigma: " sigma ", contrastCoefficient: " contrastCoefficient
 	}	
 		
-	If (_weatherURL and currentTimeInMinutes > _lastWeatherCheckInMinutes + _weatherCheckPeriodInMinutes)
+	If (_weatherURL and _currentTimeInMinutes > _lastWeatherCheckInMinutes + _weatherCheckPeriodInMinutes)
 	{
-		_lastWeatherCheckInMinutes := currentTimeInMinutes
+		_lastWeatherCheckInMinutes := _currentTimeInMinutes
 		Try
 		{
-			_lastContrastCoefficietFromWeather := 1
+			_lastContrastCoefficietFromWeather := [1, 1]
 			WinHttpRequest := ComObjCreate("WinHttp.WinHttpRequest.5.1")
 			WinHttpRequest.Open("GET", _weatherURL, true)
 			WinHttpRequest.Send() ; Using 'true' above and the call below allows the script to remain responsive.
@@ -340,7 +339,7 @@ main()
 			_lastCheckedWeather := matchedGroups1
 			If (_weatherContrastThresholds[_lastCheckedWeather])
 				_lastContrastCoefficietFromWeather := _weatherContrastThresholds[_lastCheckedWeather]
-			_lastSuccessfulWeatherCheckInMinutes := currentTimeInMinutes
+			_lastSuccessfulWeatherCheckInMinutes := _currentTimeInMinutes
 		}
 		catch exc
 			If (_showNetworkErrors)
@@ -351,18 +350,19 @@ main()
 		_lastContrastCoefficietFromWeather := _weatherContrastThresholds[_lastCheckedWeather]
 	}
 		
-	_lastSetContast := Round((_beforeSunriseOrAfterSunsetContrast + contrastCoefficient * (_zenithContrast - _beforeSunriseOrAfterSunsetContrast)) * _lastContrastCoefficietFromWeather * fullscreenContrastCoefficient)
+	_lastSetContast := Round((_beforeSunriseOrAfterSunsetContrast + contrastCoefficient * (_zenithContrast - _beforeSunriseOrAfterSunsetContrast)) * _lastContrastCoefficietFromWeather[1 + _afterZenith] * fullscreenContrastCoefficient)
 	If (Monitor.GetContrast() != _lastSetContast)
 	{
 		Monitor.SetContrast(_lastSetContast)
 		makeNewMenu := true
 	}
-	makeMenu(makeNewMenu, currentTimeInMinutes, beforeZenith)
-} ; end of main()
+	makeMenu(makeNewMenu)
+} ; end of main(makeNewMenu := "")
+
 
 Menu, Tray, Icon, %_iconFileFullNameWithPath%
 Menu, Tray, Add
-Menu, Tray, Add, Processing..., HasVal
+Menu, Tray, Add, Processing..., hasVal
 Menu, Tray, Disable, Processing...
 main()
 SetTimer, main, %_updateEveryMilliseconds%
