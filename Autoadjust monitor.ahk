@@ -140,7 +140,8 @@ processMenuItem(str)
 makeMenu(makeNewMenu := false)
 {	
 	If (_currentTimeInMinutes)
-		Menu, Tray, Tip, % "current contrast: " _lastSetContast ",`nactive curve: " (_currentTimeInMinutes < _sunriseTimeInMinutes Or _currentTimeInMinutes > _sunsetTimeInMinutes ? "none; out of the daylight" : (!_afterZenith ? _typeOfCurveLeft : _typeOfCurveRight)) ",`nActive weather coefficient: " _lastContrastCoefficietFromWeather[1 + _afterZenith] " (" _lastCheckedWeather ")"
+		outOfDaylight := _currentTimeInMinutes < _sunriseTimeInMinutes Or _currentTimeInMinutes > _sunsetTimeInMinutes ? "none; out of the daylight" : ""
+		Menu, Tray, Tip, % "current contrast: " _lastSetContast ",`nactive curve: " (outOfDaylight ? outOfDaylight: (!_afterZenith ? _typeOfCurveLeft : _typeOfCurveRight)) ",`nactive weather coefficient: " (outOfDaylight ? outOfDaylight : _lastContrastCoefficietFromWeather[1 + _afterZenith] (_lastCheckedWeather ? " (" _lastCheckedWeather ")" : ""))
 	
 	if (!makeNewMenu)
 		Return
@@ -342,10 +343,10 @@ main(makeNewMenu := "")
 			_lastSuccessfulWeatherCheckInMinutes := _currentTimeInMinutes
 		}
 		catch exc
-			If (_showNetworkErrors)
-				MsgBox, 3 ; MsgBox, %A_ScriptName%:`n`r`n`r%exc%
+			If ((_lastCheckedWeather := exc) _showNetworkErrors)
+				MsgBox, %A_ScriptName%:`n`r`n`r%exc%
 	}
-	Else If (_lastContrastCoefficietFromWeather != _weatherContrastThresholds[_lastCheckedWeather])
+	Else If (_weatherContrastThresholds[_lastCheckedWeather] And _lastContrastCoefficietFromWeather != _weatherContrastThresholds[_lastCheckedWeather])
 	{
 		_lastContrastCoefficietFromWeather := _weatherContrastThresholds[_lastCheckedWeather]
 	}
