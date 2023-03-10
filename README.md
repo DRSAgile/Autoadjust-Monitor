@@ -1,11 +1,11 @@
 ﻿# Autoadjust-Monitor
 A script that automatically adjusts the monitor's contrast depending on the length of the day and whether it is clear or cloudy.
 
-• The contrast is changing from the lowest set level at sunrise to peaking at zenith to again the lowest level at sunset. 
-• The trajectory of the change is either linear, or circular, parabolic, Bell-curve (normal distribution). 
-• The curves for up to zenith and down from it are set separately to allow more flexibility for particular light conditions the monitor is situated in. 
-• A separate coefficient for contrast in full-screen mode that might additionally brighten up the monitor for video player applications, YouTube via Internet browsers, games, so on.
-• Multu-user configuration is supported. 
+• The contrast is changing from the lowest set level at sunrise to peaking at zenith to again the lowest level at sunset.  
+• The trajectory of the change is either linear, or circular, parabolic, Bell-curve (normal distribution).  
+• The curves for up to zenith and down from it are set separately to allow more flexibility for particular light conditions the monitor is situated in.  
+• A separate coefficient for contrast in full-screen mode that might additionally brighten up the monitor for video player applications, YouTube via Internet browsers, games, so on.  
+• Multu-user configuration is supported.  
 The script requires a preparation to work as intended.
 
 Namely, a table file with sunrise and sunset times data for a whole year for a specific location needed. The times are basically the same, no matter which year the data is taken for. The script will work regardless if the data is for a leap year or not. 
