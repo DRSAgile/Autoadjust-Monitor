@@ -4,7 +4,7 @@ A script that automatically adjusts the monitor's contrast depending on the leng
 • The contrast is changing from the lowest set level at sunrise to peaking at zenith to again the lowest level at sunset.  
 • The trajectory of the change is either linear, or circular, parabolic, Bell-curve (normal distribution).  
 • The curves for up to zenith and down from it are set separately to allow more flexibility for particular light conditions the monitor is situated in.  
-• Similarly, the coefficients for different cloudiness is set both in three gradations and also depending on if the current time is before or after zenith.
+• Similarly, the coefficients for different cloudiness is set both in three gradations and also depending on if the current time is before or after zenith.  
 • A separate coefficient for contrast in full-screen mode that might additionally brighten up the monitor for video player applications, YouTube via Internet browsers, games, so on.  
 • Multu-user configuration is supported.  
 
