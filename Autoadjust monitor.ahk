@@ -8,9 +8,9 @@
 
 FileEncoding, UTF-8 ; means UTF-8 specifically with BOM
 _configurationFileNameWithPath := A_Scriptdir "\Autoadjust monitor-configuration"
-If (!_dataFileExtension)
+If (!_dataFileExtension) ; if the variable is not filled, then the configuration file for a current user does not exist
 {
-		FileCopy, %_configurationFileNameWithPath%.ahk,%_configurationFileNameWithPath%-%A_Username%.ahk, 1
+		FileCopy, %_configurationFileNameWithPath%.ahk, %_configurationFileNameWithPath%-%A_Username%.ahk, 1
 		Reload
 }
 _configurationFileNameWithPath := _configurationFileNameWithPath "-" A_Username
