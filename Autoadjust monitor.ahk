@@ -1,13 +1,19 @@
-; By DRSAgile, https://github.com/DRSAgile/Autoadjust-Monitor/
+﻿; By DRSAgile, https://github.com/DRSAgile/Autoadjust-Monitor/
 
 #Persistent
 #SingleInstance force
 #Include %a_scriptdir%
-#Include Autoadjust monitor-configuration.ahk
+#Include *i Autoadjust monitor-configuration-%A_Username%.ahk
 #include Class_Monitor.ahk ; from  https://github.com/jNizM/Class_Monitor
 
 FileEncoding, UTF-8 ; means UTF-8 specifically with BOM
-_configurationFileNameWithPath := a_scriptdir "\Autoadjust monitor-configuration"
+_configurationFileNameWithPath := A_Scriptdir "\Autoadjust monitor-configuration"
+If (!_dataFileExtension)
+{
+		FileCopy, %_configurationFileNameWithPath%.ahk,%_configurationFileNameWithPath%-%A_Username%.ahk, 1
+		Reload
+}
+_configurationFileNameWithPath := _configurationFileNameWithPath "-" A_Username
 _dataFileFullNameWithPath := a_scriptdir "\" StrReplace(A_ScriptName, ".ahk", _dataFileExtension)
 _iconFileFullNameWithPath := a_scriptdir "\" StrReplace(A_ScriptName, ".ahk", ".png")
 _lastWeatherCheckInMinutes := 0
@@ -194,7 +200,7 @@ saveChanges()
 	}
 	Try
 	{
-		FileCopy, %_configurationFileNameWithPath%.ahk,%_configurationFileNameWithPath%.bak, 1
+		FileCopy, %_configurationFileNameWithPath%.ahk, %_configurationFileNameWithPath%.bak, 1
 		FileDelete, %_configurationFileNameWithPath%.ahk
 		FileAppend, %configuration%, %_configurationFileNameWithPath%.ahk
 		_unsavedChangesArray := []
