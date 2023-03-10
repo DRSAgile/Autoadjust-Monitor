@@ -108,7 +108,7 @@ edit(ItemName, ItemPos, MenuName)
 		callMain := processInputBox(_zenithContrast, "IN>0<=100", ItemName)
 	Else If (firstWord = "Contrast")
 		callMain := processInputBox(_сontrastCoefficientInFullscreen, "FN>=1<2", ItemName)
-	Else If ((weatherArray := ["Clear","Few","Scattered"]) And (weatherIndex := HasVal(weatherArray, firstWord)))
+	Else If ((weatherArray := ["Clear", "Few", "Scattered"]) And (weatherIndex := HasVal(weatherArray, firstWord)))
 		For k, v In _weatherContrastThresholds
 			If (weatherIndex = A_Index And (callMain := processInputBox(v, "FN>=1<2", ItemName)) And (_weatherContrastThresholds[k] := Trim(v, "0")))
 				Break
@@ -147,7 +147,7 @@ makeMenu(makeNewMenu = false, currentTimeInMinutes = 0, beforeZenith = 0)
 	For k, v In _weatherContrastThresholds
 	{
 		If (A_Index = 1)
-			Menu, Tray, Add, % processMenuItem("Clear skies contrast coefficient: " v), edit
+			Menu, Tray, Add, % processMenuItem("Clear sky contrast coefficient: " v), edit
 		Else If (A_Index = 2)
 			Menu, Tray, Add, % processMenuItem("Few clouds contrast coefficient: " v), edit
 		Else If (A_Index = 3)
