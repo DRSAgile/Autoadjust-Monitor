@@ -109,7 +109,7 @@ edit(ItemName, ItemPos, MenuName)
 		callMain := processInputBox(_сontrastCoefficientInFullscreen, "FN>=1<2", ItemName)
 	Else If (firstWord = "Clear" Or firstWord = "Few")	
 		For k, v In _weatherContrastThresholds
-			If (((firstWord = "Clear" And A_Index = 1) Or (firstWord = "Few" And A_Index > 1)) And (callMain := processInputBox(v, "FN>=1<2", ItemName)))
+			If (((firstWord = "Clear" And A_Index = 1) Or (firstWord = "Few" And A_Index = 2) Or (firstWord = "Scattered" And A_Index = 3)) And (callMain := processInputBox(v, "FN>=1<2", ItemName)))
 				_weatherContrastThresholds[k] := Trim(v, "0")
 	If (callMain)
 		main()
@@ -128,10 +128,10 @@ processMenuItem(str)
 ; different menu items are identified by AHK by their text and, additionally in this script, by the first word, hence added menu items can not start with the same words
 makeMenu(makeNewMenu = false, currentTimeInMinutes = 0, beforeZenith = 0)
 {
-	Global _lastSetContast, _sunriseTime, _zenithTime, _sunsetTime, _sunriseTimeInMinutes, _sunsetTimeInMinutes, _сontrastCoefficientInFullscreen, _typeOfCurveArray, _typeOfCurveLeft, _typeOfCurveRight, _beforeSunriseOrAfterSunsetContrast, _zenithContrast, _weatherContrastThresholds, _unsavedChangesArray
+	Global _lastSetContast, _sunriseTime, _zenithTime, _sunsetTime, _sunriseTimeInMinutes, _sunsetTimeInMinutes, _сontrastCoefficientInFullscreen, _typeOfCurveArray, _typeOfCurveLeft, _typeOfCurveRight, _beforeSunriseOrAfterSunsetContrast, _zenithContrast, _weatherContrastThresholds, _lastContrastCoefficietFromWeather, _unsavedChangesArray
 	
 	If (currentTimeInMinutes)
-		Menu, Tray, Tip, % "Current contrast: " _lastSetContast ", active curve: " (currentTimeInMinutes < _sunriseTimeInMinutes Or currentTimeInMinutes > _sunsetTimeInMinutes ? "none; out of the daylight" : (beforeZenith ? _typeOfCurveLeft : _typeOfCurveRight))
+		Menu, Tray, Tip, % "current contrast: " _lastSetContast ",`nactive curve: " (currentTimeInMinutes < _sunriseTimeInMinutes Or currentTimeInMinutes > _sunsetTimeInMinutes ? "none; out of the daylight" : (beforeZenith ? _typeOfCurveLeft : _typeOfCurveRight)) ",`nweather coefficient: " _lastContrastCoefficietFromWeather
 	
 	if (!makeNewMenu)
 		Return
@@ -147,8 +147,10 @@ makeMenu(makeNewMenu = false, currentTimeInMinutes = 0, beforeZenith = 0)
 	{
 		If (A_Index = 1)
 			Menu, Tray, Add, % processMenuItem("Clear skies contrast coefficient: " v), edit
-		Else
+		Else If (A_Index = 2)
 			Menu, Tray, Add, % processMenuItem("Few clouds contrast coefficient: " v), edit
+		Else If (A_Index = 3)
+			Menu, Tray, Add, % processMenuItem("Scattered clouds contrast coefficient: " v), edit
 	}
 	For index, element In _typeOfCurveArray
 	{
@@ -174,6 +176,8 @@ saveChanges()
 {
 	Global _configurationFileNameWithPath, _typeOfCurveArray, _typeOfCurveLeft, _typeOfCurveRight, _zenithContrast, _beforeSunriseOrAfterSunsetContrast, _сontrastCoefficientInFullscreen, _weatherContrastThresholds, _unsavedChangesArray, _showNetworkErrors
 	
+	weatherRegExpArray := ["(_weatherContrastThresholds :=\s*{[^:]+:)[^,]+(,.+)$", "(_weatherContrastThresholds :=\s*?{[^,]+[^:]+:)[^,]+(,.+?)$", "(_weatherContrastThresholds :=\s*?{[^,]+[^:]+:[^,]+[^:]+:)[^,]+(}.*?)$"]
+	
 	configuration := ""
 	Loop, read, %_configurationFileNameWithPath%.ahk
 	{
@@ -184,10 +188,7 @@ saveChanges()
 		processedLine := RegExReplace(processedLine, "(_сontrastCoefficientInFullscreen :=).*$", "$1 " _сontrastCoefficientInFullscreen)
 		If (InStr(processedLine, "_weatherContrastThresholds"))
 			For k, v in _weatherContrastThresholds
-				If (A_Index = 1)
-					processedLine := RegExReplace(processedLine, "(_weatherContrastThresholds :=\s*{\"".*?\"":\s*?).*(,.*)$", "$1 " v "$2")
-				Else
-					processedLine := RegExReplace(processedLine, "(_weatherContrastThresholds :=\s*?{[^,]*[^:]*:).*(}.*?)$", "$1 " v "$2")
+					processedLine := RegExReplace(processedLine, weatherRegExpArray[A_Index], "$1 " v "$2")
 		configuration .= processedLine "`n"
 	}
 	Try
@@ -321,13 +322,14 @@ main()
 		_lastWeatherCheckInMinutes := currentTimeInMinutes
 		Try
 		{
+			_lastContrastCoefficietFromWeather := 1
 			WinHttpRequest := ComObjCreate("WinHttp.WinHttpRequest.5.1")
 			WinHttpRequest.Open("GET", _weatherURL, true)
 			WinHttpRequest.Send() ; Using 'true' above and the call below allows the script to remain responsive.
 			WinHttpRequest.WaitForResponse()
 				
 			RegExMatch(WinHttpRequest.ResponseText, _weatherRegExp, matchedGroups) ; there are will be automaticly generated matchedGroups1, matchedGroups2 ... variables
-
+			;FileAppend,% matchedGroups1 "`n`r" _weatherContrastThresholds[matchedGroups1] "`n`r" WinHttpRequest.ResponseText "`n`r", %A_ScriptDir%\Test.txt
 			If (_weatherContrastThresholds[matchedGroups1])
 				_lastContrastCoefficietFromWeather := _weatherContrastThresholds[matchedGroups1]
 			_lastSuccessfulWeatherCheckInMinutes := currentTimeInMinutes
@@ -336,9 +338,8 @@ main()
 			If (_showNetworkErrors)
 				MsgBox, 3 ; MsgBox, %A_ScriptName%:`n`r`n`r%exc%
 	}
-	contrastCoefficient := contrastCoefficient * _lastContrastCoefficietFromWeather
 		
-	_lastSetContast := Round((_beforeSunriseOrAfterSunsetContrast + contrastCoefficient * (_zenithContrast - _beforeSunriseOrAfterSunsetContrast)) * fullscreenContrastCoefficient)
+	_lastSetContast := Round((_beforeSunriseOrAfterSunsetContrast + contrastCoefficient * (_zenithContrast - _beforeSunriseOrAfterSunsetContrast)) * _lastContrastCoefficietFromWeather * fullscreenContrastCoefficient)
 	If (Monitor.GetContrast() != _lastSetContast)
 	{
 		Monitor.SetContrast(_lastSetContast)
