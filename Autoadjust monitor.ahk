@@ -13,6 +13,7 @@ _iconFileFullNameWithPath := a_scriptdir "\" StrReplace(A_ScriptName, ".ahk", ".
 _lastWeatherCheckInMinutes := 0
 _lastSuccessfulWeatherCheckInMinutes := 0
 _lastContrastCoefficietFromWeather := 1
+_lastCheckedWeather := ""
 _lastSetContast := 0
 _dataFileRowToSearch := 0
 _sunriseTimeInMinutes := 0
@@ -128,10 +129,10 @@ processMenuItem(str)
 ; different menu items are identified by AHK by their text and, additionally in this script, by the first word, hence added menu items can not start with the same words
 makeMenu(makeNewMenu = false, currentTimeInMinutes = 0, beforeZenith = 0)
 {
-	Global _lastSetContast, _sunriseTime, _zenithTime, _sunsetTime, _sunriseTimeInMinutes, _sunsetTimeInMinutes, _сontrastCoefficientInFullscreen, _typeOfCurveArray, _typeOfCurveLeft, _typeOfCurveRight, _beforeSunriseOrAfterSunsetContrast, _zenithContrast, _weatherContrastThresholds, _lastContrastCoefficietFromWeather, _unsavedChangesArray
+	Global _lastSetContast, _sunriseTime, _zenithTime, _sunsetTime, _sunriseTimeInMinutes, _sunsetTimeInMinutes, _сontrastCoefficientInFullscreen, _typeOfCurveArray, _typeOfCurveLeft, _typeOfCurveRight, _beforeSunriseOrAfterSunsetContrast, _zenithContrast, _weatherContrastThresholds, _lastContrastCoefficietFromWeather, _lastCheckedWeather, _unsavedChangesArray
 	
 	If (currentTimeInMinutes)
-		Menu, Tray, Tip, % "current contrast: " _lastSetContast ",`nactive curve: " (currentTimeInMinutes < _sunriseTimeInMinutes Or currentTimeInMinutes > _sunsetTimeInMinutes ? "none; out of the daylight" : (beforeZenith ? _typeOfCurveLeft : _typeOfCurveRight)) ",`nweather coefficient: " _lastContrastCoefficietFromWeather
+		Menu, Tray, Tip, % "current contrast: " _lastSetContast ",`nactive curve: " (currentTimeInMinutes < _sunriseTimeInMinutes Or currentTimeInMinutes > _sunsetTimeInMinutes ? "none; out of the daylight" : (beforeZenith ? _typeOfCurveLeft : _typeOfCurveRight)) ",`nweather coefficient: " _lastContrastCoefficietFromWeather " (" _lastCheckedWeather ")"
 	
 	if (!makeNewMenu)
 		Return
@@ -268,7 +269,7 @@ checkFullScreen()
 
 main()
 {
-	Global Monitor, _typeOfCurveLeft, _typeOfCurveRight, _weatherURL, _weatherRegExp, _weatherContrastThresholds, _weatherCheckPeriodInMinutes, _lastWeatherCheckInMinutes, _lastSuccessfulWeatherCheckInMinutes, _lastContrastCoefficietFromWeather, _dataFileRowToSearch, _dataFileHeaderHeight, _sunriseTimeInMinutes, _sunsetTimeInMinutes, _beforeSunriseOrAfterSunsetContrast,_zenithContrast, _сontrastCoefficientInFullscreen, _lastSetContast, _showNetworkErrors
+	Global Monitor, _typeOfCurveLeft, _typeOfCurveRight, _weatherURL, _weatherRegExp, _weatherContrastThresholds, _weatherCheckPeriodInMinutes, _lastWeatherCheckInMinutes, _lastSuccessfulWeatherCheckInMinutes, _lastCheckedWeather, _lastContrastCoefficietFromWeather, _dataFileRowToSearch, _dataFileHeaderHeight, _sunriseTimeInMinutes, _sunsetTimeInMinutes, _beforeSunriseOrAfterSunsetContrast,_zenithContrast, _сontrastCoefficientInFullscreen, _lastSetContast, _showNetworkErrors
 	
 	fullscreenContrastCoefficient := isWindowFullScreen("A") ? _сontrastCoefficientInFullscreen : 1
 	
@@ -330,13 +331,18 @@ main()
 				
 			RegExMatch(WinHttpRequest.ResponseText, _weatherRegExp, matchedGroups) ; there are will be automaticly generated matchedGroups1, matchedGroups2 ... variables
 			;FileAppend,% matchedGroups1 "`n`r" _weatherContrastThresholds[matchedGroups1] "`n`r" WinHttpRequest.ResponseText "`n`r", %A_ScriptDir%\Test.txt
-			If (_weatherContrastThresholds[matchedGroups1])
-				_lastContrastCoefficietFromWeather := _weatherContrastThresholds[matchedGroups1]
+			_lastCheckedWeather := matchedGroups1
+			If (_weatherContrastThresholds[_lastCheckedWeather])
+				_lastContrastCoefficietFromWeather := _weatherContrastThresholds[_lastCheckedWeather]
 			_lastSuccessfulWeatherCheckInMinutes := currentTimeInMinutes
 		}
 		catch exc
 			If (_showNetworkErrors)
 				MsgBox, 3 ; MsgBox, %A_ScriptName%:`n`r`n`r%exc%
+	}
+	Else If (_lastContrastCoefficietFromWeather != _weatherContrastThresholds[_lastCheckedWeather])
+	{
+		_lastContrastCoefficietFromWeather := _weatherContrastThresholds[_lastCheckedWeather]
 	}
 		
 	_lastSetContast := Round((_beforeSunriseOrAfterSunsetContrast + contrastCoefficient * (_zenithContrast - _beforeSunriseOrAfterSunsetContrast)) * _lastContrastCoefficietFromWeather * fullscreenContrastCoefficient)
