@@ -100,10 +100,12 @@ edit(menuText, ItemName, ItemPos, MenuName)
 {	
 	callMain := false
 	firstWord := StrReplace(StrSplit(menuText ? menuText : ItemName, A_Space)[1], "*")
-	If (weatherArrayIndex := hasVal(_weatherTypesArray, firstWord)) ; goes in the beginning of the function's code as submenus contain first words, used in menu names
+	If (weatherArrayIndex := hasVal(_weatherTypesArray, firstWord)) ; goes in the beginning of the function's code as submenus contain first words, used in menu names:
+	{
 		For k, v In _weatherContrastThresholds
 			If (weatherArrayIndex = A_Index And (value := v[ItemPos]) And (callMain := processInputBox(value, "FN>=1<2", StrReplace(menuText, ":") ItemName)) And (_weatherContrastThresholds[k][ItemPos] := Trim(value, "0")))
 				Break
+	} ; needs those outer brakets because otherwise Else If would merge wrongly with If above
 	Else If (InStr(MenuName, "Left") And ItemName != _typeOfCurveLeft)
 	{
 		_typeOfCurveLeft := ItemName
