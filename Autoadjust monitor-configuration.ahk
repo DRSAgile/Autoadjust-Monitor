@@ -24,10 +24,9 @@ Global _typeOfCurveLeft := _typeOfCurveArray[1]
 
 Global _typeOfCurveRight := _typeOfCurveArray[1]
 
-Global _weatherURL := "https://api.openweathermap.org/data/2.5/forecast?lat=59.898300&lon=30.261800&cnt=1&appid="
-; insert at the end of the URL the ID you get after registering in the weather service
+Global _weatherURL := "https://api.openweathermap.org/data/2.5/forecast?lat=&lon=&cnt=1&appid="
+; insert after each "=", consecutively, latitude, longitude and the ID you get after registering in the weather service
 ; &cnt=1 to only include current weather state with no future prognosis; should probably always include API key as there are no open, free of registration or charge weather services left that would allow non-interactive download of a HTML page with the weather data based on coordinates
-; lat=59.960481&lon=30.294613
 
 Global _weatherRegExp := """description"":""(.*?)""" ; to search for data in a weather service response
 
