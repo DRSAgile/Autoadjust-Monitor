@@ -299,7 +299,7 @@ main(makeNewMenu := "")
 
  	If ((_currentTimeInMinutes <= _sunriseTimeInMinutes Or _currentTimeInMinutes >= _sunsetTimeInMinutes) )
 	{
-		contrastToSet := Round(fullscreenContrastCoefficient * _beforeSunriseOrAfterSunsetContrast)
+		contrastToSet := Round(_beforeSunriseOrAfterSunsetContrast) ; fullscreenContrastCoefficient -- switched off with no daylight
 		If (_lastSetContast != contrastToSet)
 		{
 			_lastSetContast := contrastToSet
@@ -352,8 +352,7 @@ main(makeNewMenu := "")
 	{
 		_lastContrastCoefficietFromWeather := _weatherContrastThresholds[_lastCheckedWeather]
 	}
-		
-	_lastSetContast := Round((_beforeSunriseOrAfterSunsetContrast + contrastCoefficient * (_zenithContrast - _beforeSunriseOrAfterSunsetContrast)) * _lastContrastCoefficietFromWeather[1 + _afterZenith] * fullscreenContrastCoefficient)
+	_lastSetContast := Round((_beforeSunriseOrAfterSunsetContrast + (_zenithContrast - _beforeSunriseOrAfterSunsetContrast) * contrastCoefficient * fullscreenContrastCoefficient) * _lastContrastCoefficietFromWeather[1 + _afterZenith])
 	If (Monitor.GetContrast() != _lastSetContast)
 	{
 		Monitor.SetContrast(_lastSetContast)
