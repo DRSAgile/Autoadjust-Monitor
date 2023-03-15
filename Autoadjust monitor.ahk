@@ -16,7 +16,6 @@ If (!_dataFileExtension) ; if the variable is not filled, then the configuration
 _configurationFileNameWithPath := _configurationFileNameWithPath "-" A_Username
 Global _dataFileFullNameWithPath := a_scriptdir "\" StrReplace(A_ScriptName, ".ahk", _dataFileExtension)
 Global _iconFileFullNameWithPath := a_scriptdir "\" StrReplace(A_ScriptName, ".ahk", ".png")
-Global _weatherTypesArray := ["Clear", "Few", "Scattered"]
 Global _lastWeatherCheckInMinutes := 0
 Global _lastSuccessfulWeatherCheckInMinutes := 0
 Global _lastContrastCoefficietFromWeather := [1, 1]
@@ -32,7 +31,9 @@ Global _sunsetTime := ""
 Global _zenithTime := ""
 Global _lastIsFullscreen := isWindowFullScreen("A")
 Global _unsavedChangesArray := []
-
+Global _weatherMenuNamesArray := []
+Loop % _weatherTypesArray.Length()
+	_weatherMenuNamesArray[A_Index] := _weatherTypesArray[A_Index] (_weatherTypesArray[A_Index] = "Clear" ? " sky" : " clouds") " contrast coefficient: "
 
 arrayToString(arr, separator := ", ")
 {
@@ -102,9 +103,13 @@ edit(menuText, ItemName, ItemPos, MenuName)
 	firstWord := StrReplace(StrSplit(menuText ? menuText : ItemName, A_Space)[1], "*")
 	If (weatherArrayIndex := hasVal(_weatherTypesArray, firstWord)) ; goes in the beginning of the function's code as submenus contain first words, used in menu names:
 	{
-		For k, v In _weatherContrastThresholds
-			If (weatherArrayIndex = A_Index And (value := v[ItemPos]) And (callMain := processInputBox(value, "FN>=1<2", StrReplace(menuText, ":") ItemName)) And (_weatherContrastThresholds[k][ItemPos] := Trim(value, "0")))
-				Break
+		sortedMenuArray := []
+		For k, v In _weatherContrastThresholdsArray
+			sortedMenuArray[v[v.Length()]] := [k, v] ; the only way to effectively sort an array as there are no dedicated methods for that in AHK
+		k := sortedMenuArray[weatherArrayIndex][1]
+		v := sortedMenuArray[weatherArrayIndex][2]
+		If ((value := v[ItemPos]) And (callMain := processInputBox(value, "FN>=1<2", StrReplace(menuText, ":") ItemName)))
+			_weatherContrastThresholdsArray[k][ItemPos] := Trim(value, "0")
 	} ; needs those outer brakets because otherwise Else If would merge wrongly with If above
 	Else If (InStr(MenuName, "Left") And ItemName != _typeOfCurveLeft)
 	{
@@ -156,23 +161,27 @@ makeMenu(makeNewMenu := false)
 		Menu, Tray, Disable, Save changes
 	Menu, Tray, Add
 	Menu, Tray, Add, % processMenuItem("Contrast coefficient in fullscreen mode: " _сontrastCoefficientInFullscreen), % bEdit
-	
-	menuNamesArray := ["Clear sky contrast coefficient: ", "Few clouds contrast coefficient: ", "Scattered clouds contrast coefficient: "]
-	For k, v In _weatherContrastThresholds
+	Menu, Tray, Add
+	sortedMenuArray := []
+	For k, v In _weatherContrastThresholdsArray
+		sortedMenuArray[v[v.Length()]] := v ; the only way to effectively sort an array as there are no dedicated methods for that in AHK
+	Loop, % sortedMenuArray.Length()
 	{
-		boundEdit := Func("edit").Bind(menuNamesArray[A_Index])
+		boundEdit := Func("edit").Bind(_weatherMenuNamesArray[A_Index])
 		subMenuName := "WeatherSubmenu" _weatherTypesArray[A_Index]
 		Try
 			Menu, %subMenuName%, DeleteAll
+		v := sortedMenuArray[A_Index]
 		vStr := ""
-		Loop % v.Length()
+		Loop % v.Length() - 1
 		{
 			vStr .= ", " v[A_Index]
 			Menu, %subMenuName%, Add, % (A_Index = 1 ? "before" : "after") " zenith: " v[A_Index], % boundEdit
 		}
 		vStr := LTrim(vStr, ", ")
-		Menu, Tray, Add, % processMenuItem(menuNamesArray[A_Index] vStr), :%subMenuName%
+		Menu, Tray, Add, % processMenuItem(_weatherMenuNamesArray[A_Index] vStr), :%subMenuName%
 	}
+	Menu, Tray, Add	
 	For index, element In _typeOfCurveArray
 	{
 		Menu, typeOfCurveSubmenu_Left, Add, %element%, % bEdit
@@ -188,6 +197,7 @@ makeMenu(makeNewMenu := false)
 	}
 	Menu, Tray, Add, % processMenuItem("Up to zenith curve for interpolation: " _typeOfCurveLeft), :typeOfCurveSubmenu_Left
 	Menu, Tray, Add, % processMenuItem("Down from zenith curve for interpolation: " _typeOfCurveRight), :typeOfCurveSubmenu_Right
+	Menu, Tray, Add
 	Menu, Tray, Add, % processMenuItem("Before sunrise (" _sunriseTime "), after sunset (" _sunsetTime ") contrast: " _beforeSunriseOrAfterSunsetContrast), % bEdit
 	Menu, Tray, Add, % processMenuItem("Zenith (" _zenithTime ") contrast: " _zenithContrast), % bEdit
 } ; end of makeMenu(makeNewMenu := false)
@@ -203,9 +213,16 @@ saveChanges()
 		processedLine := RegExReplace(processedLine, "(_zenithContrast :=).*$", "$1 " _zenithContrast) 
 		processedLine := RegExReplace(processedLine, "(_beforeSunriseOrAfterSunsetContrast :=).*$", "$1 " _beforeSunriseOrAfterSunsetContrast)
 		processedLine := RegExReplace(processedLine, "(_сontrastCoefficientInFullscreen :=).*$", "$1 " _сontrastCoefficientInFullscreen)
-		If (InStr(processedLine, "_weatherContrastThresholds"))
-			For k, v in _weatherContrastThresholds
-				processedLine := RegExReplace(processedLine, "(_weatherContrastThresholds :=\s*?{(?:[^\[]+\[){" A_Index "})[^\]]+(\].+)$", "$1" arrayToString(v) "$2")
+		If (InStr(processedLine, "_weatherContrastThresholdsArray :="))
+		{
+			sortedWeatherContrastThresholdsArray := []
+			For k, v In _weatherContrastThresholdsArray
+				sortedWeatherContrastThresholdsArray[v[v.Length()]] := [k,v] ; the only way to effectively sort an array as there are no dedicated methods for that in AHK
+			arrayString := ""
+			Loop, % sortedWeatherContrastThresholdsArray.Length()
+				arrayString .= """" sortedWeatherContrastThresholdsArray[A_Index][1] """: [" arrayToString(sortedWeatherContrastThresholdsArray[A_Index][2]) "]" (A_Index < sortedWeatherContrastThresholdsArray.Length() ? ", ": "")
+			processedLine := RegExReplace(processedLine, "(_weatherContrastThresholdsArray :=\s*?{).+?(}.*?)$", "$1" arrayString "$2")
+		}
 		configuration .= processedLine "`n"
 	}
 	Try
@@ -338,19 +355,19 @@ main(makeNewMenu := "")
 			WinHttpRequest.WaitForResponse()
 				
 			RegExMatch(WinHttpRequest.ResponseText, _weatherRegExp, matchedGroups) ; there are will be automaticly generated matchedGroups1, matchedGroups2 ... variables
-			;FileAppend,% matchedGroups1 "`n`r" _weatherContrastThresholds[matchedGroups1] "`n`r" WinHttpRequest.ResponseText "`n`r", %A_ScriptDir%\Test.txt
+			;FileAppend,% matchedGroups1 "`n`r" _weatherContrastThresholdsArray[matchedGroups1] "`n`r" WinHttpRequest.ResponseText "`n`r", %A_ScriptDir%\Test.txt
 			_lastCheckedWeather := matchedGroups1
-			If (_weatherContrastThresholds[_lastCheckedWeather])
-				_lastContrastCoefficietFromWeather := _weatherContrastThresholds[_lastCheckedWeather]
+			If (_weatherContrastThresholdsArray[_lastCheckedWeather])
+				_lastContrastCoefficietFromWeather := _weatherContrastThresholdsArray[_lastCheckedWeather]
 			_lastSuccessfulWeatherCheckInMinutes := _currentTimeInMinutes
 		}
 		catch exc
 			If ((_lastCheckedWeather := exc) _showNetworkErrors)
 				MsgBox, %A_ScriptName%:`n`r`n`r%exc%
 	}
-	Else If (_weatherContrastThresholds[_lastCheckedWeather] And _lastContrastCoefficietFromWeather != _weatherContrastThresholds[_lastCheckedWeather])
+	If (_weatherContrastThresholdsArray[_lastCheckedWeather] And _lastContrastCoefficietFromWeather != _weatherContrastThresholdsArray[_lastCheckedWeather])
 	{
-		_lastContrastCoefficietFromWeather := _weatherContrastThresholds[_lastCheckedWeather]
+		_lastContrastCoefficietFromWeather := _weatherContrastThresholdsArray[_lastCheckedWeather]
 	}
 	_lastSetContast := Round((_beforeSunriseOrAfterSunsetContrast + (_zenithContrast - _beforeSunriseOrAfterSunsetContrast) * contrastCoefficient * fullscreenContrastCoefficient) * _lastContrastCoefficietFromWeather[1 + _afterZenith])
 	If (Monitor.GetContrast() != _lastSetContast)
